@@ -1,0 +1,147 @@
+---
+title: "aer13_FinalHomeworkCode_05"
+author: "Abby_Robinson"
+date: "11/18/2021"
+output: html_document
+---
+
+#Boots for Days!
+##Bootstrapping Standard Errors and CIs for Linear Models.
+
+```{r}
+library(curl)
+```
+
+load KamilarAndCooperData.csv dataset into R markdown file 
+```{r}
+f <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN588_Fall21/KamilarAndCooperData.csv")
+k <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = TRUE)
+k
+```
+
+[1] Using the “KamilarAndCooperData.csv” dataset, run a linear regression looking at log(HomeRange_km2) in relation to log(Body_mass_female_mean) and report your β coeffiecients (slope and intercept).
+
+```{r}
+model <- lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = k, na.action = na.exclude) #use na.action = na.exclude here to remove NAs from the dataset 
+
+model
+##the intercept is -9.441 and the slope is 1.036
+
+plot(model)  ##residuals look randomly distributed and the QQ plot is linear 
+```
+
+[2] Then, use bootstrapping to sample from your data 1000 times with replacement, each time fitting the same model and calculating the same coefficients. This generates a sampling distribution for each β coefficient.
+
+subset home range and body mass data to form a new dataset using as.data.frame()
+```{r}
+home <- k$HomeRange_km2
+
+mass <- k$Body_mass_female_mean
+
+pop.data <- as.data.frame(cbind(mass, home))
+
+pop.data <- na.omit(pop.data)
+pop.data
+```
+
+take a sample of 10 from the population 
+```{r}
+sample.data <- pop.data[sample(nrow(pop.data), 10, replace = TRUE),]
+sample.data
+```
+
+```{r}
+# Containers for the coefficients
+sample_coef_intercept <- NULL
+sample_coef_slope <- NULL
+
+for (i in 1:1000) {
+  #Creating a resampled dataset from the sample data
+  sample_d = sample.data[sample(1:nrow(sample.data), nrow(sample.data), replace = TRUE), ]
+  
+  #Running the regression on these data
+  model_bootstrap <- lm(log(home) ~ log(mass), data = sample_d)
+  
+  #Saving the coefficients
+  sample_coef_intercept <-
+    c(sample_coef_intercept, model_bootstrap$coefficients[1])
+  
+  sample_coef_slope <-
+    c(sample_coef_slope, model_bootstrap$coefficients[2])
+}
+
+```
+
+call intercept coefficient sampling distribution 
+
+```{r}
+sample_coef_intercept
+mean(sample_coef_intercept) #mean intercept from bootstrapping 
+```
+
+
+call slope coefficient sampling distribution 
+```{r}
+sample_coef_slope
+mean(sample_coef_slope) #mean slope from bootstrapping
+```
+
+
+
+Estimate the standard error for each of your β coefficients as the standard deviation of the sampling distribution from your bootstrap and determine the 95% CI for each of your β coefficients based on the appropriate quantiles from your sampling distribution.
+
+use the summary() function to see the standard error values for the 
+```{r}
+summary(model)
+```
+
+std.error() function from the plotrix package can be used to calculate standard error 
+```{r}
+library(plotrix)
+std.error(sample_coef_intercept)
+std.error(sample_coef_slope)
+```
+
+standard deviation can be calculated with the sd() function 
+```{r}
+sd(sample_coef_intercept) #standard deviation for the intercept coefficient 
+sd(sample_coef_slope) #standard deviation for the slope coefficient
+```
+
+95% CI for intercept: 
+  from bootstrapping 
+```{r}
+quantile(sample_coef_intercept, c(0.025, 0.975))
+```
+
+  from linear regression model 
+```{r}
+quantile(model$coefficients[1])
+```
+
+95% CI for slope 
+  from bootstrapping 
+```{r}
+quantile(sample_coef_slope, c(0.025, 0.975))
+```
+  from linear regression model 
+```{r}
+quantile(model$coefficients[2])
+```
+
+
+
+
+##How does the former compare to the SE estimated from your entire dataset using the formula for standard error implemented in lm()?
+
+the standard error from my orifical linear regression model was 0.67 for the intercept and 0.085 for the slope. the standard error from my bootstrap analysis was 0.113 for intercept and 0.013 for slope. These values are not exactly the same, but they do follow the same pattern, so I call that a win! 
+
+##How does the latter compare to the 95% CI estimated from your entire dataset?
+
+I tried to find the confidence interval for the entire dataset using the quantile function. It seems like the 95% confidence intervals are greater in the bootstrapping analysis for both slope and intercept 
+
+##Challenges:
+
+1. I got an error when I tried to sample from the whole population because there were too many NAs in the dataset and the sample was only pulling NAs values, but I removed the NAs and that fixed the problem 
+
+2. I originally had the "sample.data" code inside the bootstrap loop, but this was just giving the same number 1000 times when I ran the bootstrap, so I put that code outside of the actual bootstrap loop and that seemed to fix the problem! 
