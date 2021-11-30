@@ -50,6 +50,7 @@ sample.data <- pop.data[sample(nrow(pop.data), 10, replace = TRUE),]
 sample.data
 ```
 
+
 ```{r}
 # Containers for the coefficients
 sample_coef_intercept <- NULL
@@ -71,6 +72,8 @@ for (i in 1:1000) {
 }
 
 ```
+
+
 
 call intercept coefficient sampling distribution 
 
@@ -129,6 +132,7 @@ quantile(sample_coef_slope, c(0.025, 0.975))
 quantile(model$coefficients[2])
 ```
 
+*good work! keep in mind the boot() is also an easy way to run a bootstrap (and use boot.ci() to find CIs)*
 
 
 
