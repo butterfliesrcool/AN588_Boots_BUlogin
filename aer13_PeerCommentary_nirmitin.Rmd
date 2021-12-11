@@ -1,0 +1,125 @@
+---
+title: "aer13_PeerCommentary_nirmitin"
+author: "Nirmiti Naik"
+date: "11/18/2021"
+output: html_document
+---
+
+
+#Boots for Days!
+##Bootstrapping Standard Errors and CIs for Linear Models.
+
+```{r}
+library(curl)
+```
+
+load KamilarAndCooperData.csv dataset into R markdown file 
+```{r}
+f <- curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN588_Fall21/KamilarAndCooperData.csv")
+k <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = TRUE)
+k
+```
+
+[1] Using the “KamilarAndCooperData.csv” dataset, run a linear regression looking at log(HomeRange_km2) in relation to log(Body_mass_female_mean) and report your β coeffiecients (slope and intercept).
+**I like that you went further and looked at the residuals and QQ plot as well to see if there was any information you could gain from that.-NN**
+```{r}
+model <- lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = k)
+model
+##the intercept is -9.441 and the slope is 1.036
+plot(model)  ##residuals look randomly distributed and the QQ plot is linear 
+```
+
+[2] Then, use bootstrapping to sample from your data 1000 times with replacement, each time fitting the same model and calculating the same coefficients. This generates a sampling distribution for each β coefficient.
+
+subset and rename  home range and body mass data and remove NAs
+**Seems very useful to rename your variables and omitting the NAs seems to have made a difference since the values are slightly different than the ones I got.-NN**
+```{r}
+home <- k$HomeRange_km2
+home
+home <- na.omit(home)
+mass <- k$Body_mass_female_mean
+mass <- na.omit(mass)
+mass
+pop.data <- as.data.frame(cbind(mass, home))
+```
+
+take a sample of 10 from the population 
+```{r}
+sample.data <- pop.data[sample(nrow(pop.data), 10, replace = TRUE),]
+sample.data
+```
+
+```{r}
+sample.model <- lm(log(home) ~ log(mass), data = sample.data)
+sample.model
+```
+
+
+```{r}
+# Containers for the coefficients
+sample_coef_intercept <- NULL
+sample_coef_slope <- NULL
+for (i in 1:1000) {
+  #Creating a resampled dataset from the sample data
+  sample_d = sample.data[sample(1:nrow(sample.data), nrow(sample.data), replace = TRUE), ]
+  
+  #Running the regression on these data
+  model_bootstrap <- lm(home ~ mass, data = sample_d)
+  
+  #Saving the coefficients
+  sample_coef_intercept <-
+    c(sample_coef_intercept, model_bootstrap$coefficients[1])
+  
+  sample_coef_slope <-
+    c(sample_coef_slope, model_bootstrap$coefficients[2])
+}
+###Source: https://towardsdatascience.com/bootstrap-regression-in-r-98bfe4ff5007
+```
+
+call intercept coefficient sampling distribution 
+
+```{r}
+sample_coef_intercept
+```
+
+
+call slope coefficient sampling distribution 
+```{r}
+sample_coef_slope
+```
+
+Estimate the standard error for each of your β coefficients as the standard deviation of the sampling distribution from your bootstrap and determine the 95% CI for each of your β coefficients based on the appropriate quantiles from your sampling distribution.
+
+standard deviation 
+```{r}
+sd(sample_coef_intercept) #standard deviation for the intercept coefficient 
+sd(sample_coef_slope) #standard deviation for the slope coefficient
+```
+
+95% CI
+```{r}
+quantile(sample_coef_intercept, c(0.025, 0.975))
+##Got this from module 7, not sure if its right... 
+```
+
+##How does the former compare to the SE estimated from your entire dataset using the formula for standard error implemented in lm()?
+
+error seems higher in my sample disribution, but I also only sampled 10 individuals in my bootstrap, so these number might be more similar if a took a larger sample? 
+
+```{r}
+summary(model)
+```
+
+##How does the latter compare to the 95% CI estimated from your entire dataset?
+
+My 3Q confidence interval is higher than that of the original model with the entire dataset, but agian this might be because I have a small sample number 
+
+**Your approach at bootstrapping was quite different than mine since it seems like you got 10,000(?) B0 and B1 coefficients, one for each of your samples - I would assume that they would average out to a similar value you would get if you used the boot.ci function. I never considered bootstrapping or calculating the coefficients and CI this way so I'm interested to see how our values compare.-NN**
+
+##Challenges:
+
+1. I got an error when I tried to sample from the whole population because there were too many NAs in the dataset and the sample was only pulling NAs values, but I removed the NAs and that fixed the problem 
+
+2. I originally had the "sample.data" code inside the bootstrap loop, but this was just giving the same number 1000 times when I ran the bootstrap, so I put that code outside of the actual bootstrap loop and that seemed to fix the problem! 
+
+
